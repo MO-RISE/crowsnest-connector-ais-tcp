@@ -2,7 +2,7 @@
 import logging
 import warnings
 from base64 import b64decode
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Tuple, Optional
 
 from streamz import Stream
@@ -114,7 +114,8 @@ def to_brefv(message: ANY_MESSAGE) -> Tuple[Envelope, int, int]:
     """From AISMessage to brefv envelope"""
 
     envelope = Envelope(
-        sent_at=datetime.utcnow().isoformat(), message=message.asdict(enum_as_int=True)
+        sent_at=datetime.now(timezone.utc).isoformat(),
+        message=message.asdict(enum_as_int=True),
     )
 
     return envelope, int(message.mmsi), int(message.msg_type)
