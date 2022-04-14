@@ -1,5 +1,5 @@
 paho-mqtt
-pyais
+pyais >= 2.1.0
 streamz
 environs
 pydantic
