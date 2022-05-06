@@ -7,7 +7,7 @@ from datetime import datetime
 
 from paho.mqtt.client import MQTTMessage
 from brefv.envelope import Envelope
-from pyais.messages import NMEAMessage
+from pyais.messages import NMEAMessage, JSONEncoder as BytesJSONEncoder
 
 
 def test_from_mqtt():
@@ -47,7 +47,12 @@ def test_decode(pinned):
 
     res = main.decode(msg)
 
-    assert res.asdict(enum_as_int=True) == pinned
+    out = res.asdict(enum_as_int=True)
+
+    # Workaround for https://github.com/freol35241/pytest-pinned/issues/10
+    out = json.loads(json.dumps(out, cls=BytesJSONEncoder))
+
+    assert out == pinned
 
 
 def test_to_brefv(pinned):
@@ -57,6 +62,9 @@ def test_to_brefv(pinned):
 
     env, mmsi, type = main.to_brefv(res)
 
-    assert env.message == pinned
+    # Workaround for https://github.com/freol35241/pytest-pinned/issues/10
+    msg = json.loads(env.json(cls=BytesJSONEncoder))["message"]
+
+    assert msg == pinned
     assert mmsi == pinned
     assert type == pinned
