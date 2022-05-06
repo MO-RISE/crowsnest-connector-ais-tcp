@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple, Optional
 
 from streamz import Stream
 
-from pyais.messages import ANY_MESSAGE, NMEAMessage
+from pyais.messages import ANY_MESSAGE, NMEAMessage, JSONEncoder as BytesJSONEncoder
 from pyais.exceptions import InvalidNMEAMessageException
 from environs import Env
 
@@ -125,7 +125,7 @@ def to_mqtt(envelope: Envelope, mmsi: int, message_type: int):
     """Publish an envelope to a mqtt topic"""
 
     topic = f"{MQTT_OUTPUT_BASE_TOPIC}/{mmsi}/{message_type}"
-    payload = envelope.json()
+    payload = envelope.json(cls=BytesJSONEncoder)
 
     LOGGER.debug("Publishing on %s with payload: %s", topic, payload)
     try:
@@ -159,5 +159,5 @@ if __name__ == "__main__":
     LOGGER.info("Connecting to MQTT broker...")
     mq.connect(MQTT_BROKER_HOST, MQTT_BROKER_PORT)
 
-    # Lets fire this baby up!
+    # Data driven, lets just make sure to stay connected!
     mq.loop_forever()

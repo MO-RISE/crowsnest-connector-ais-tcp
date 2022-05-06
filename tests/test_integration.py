@@ -4,22 +4,40 @@ import time
 import json
 import threading
 from contextlib import contextmanager
+from functools import partial
 from unittest.mock import MagicMock
 
 from brefv.envelope import Envelope
-from paho.mqtt import subscribe, publish
+from paho.mqtt import publish
+from paho.mqtt.client import Client
+from pyais.messages import JSONEncoder as BytesJSONEncoder
 
 
 @contextmanager
-def subscriber(*args, **kwargs):
-    t = threading.Thread(target=subscribe.callback, args=args, kwargs=kwargs)
-    t.setDaemon(True)
-    t.start()
-    time.sleep(0.1)
+def subscriber(callback, topic):
+    c = Client()
+    c.on_message = callback
+    c.connect("localhost")
+    c.subscribe(topic, qos=2)
+    c.loop_start()
     yield
+    c.loop_stop()
+    del c
 
 
-def test_all_parts(broker, app, pinned):
+def test_mqtt_setup(compose):
+
+    mock = MagicMock()
+
+    with subscriber(mock, "TEST/#"):
+        publish.single("TEST", "TEST", qos=2)
+        publish.single("TEST", "TEST", qos=2)
+        publish.single("TEST", "TEST", qos=2)
+
+    assert mock.call_count == 3
+
+
+def test_all_parts(compose, pinned):
 
     mock = MagicMock()
 
@@ -30,16 +48,20 @@ def test_all_parts(broker, app, pinned):
                     sent_at=datetime.utcnow().isoformat(),
                     message=b64encode(line.strip().encode()),
                 )
-                publish.single("INPUT", env.json())
+                publish.single("INPUT", env.json(), qos=2)
                 time.sleep(0.01)
 
-        time.sleep(2)
+        time.sleep(1)
 
-    assert mock.called
     assert mock.call_count == pinned
 
     received_envelopes = [
         Envelope.parse_raw(args[2].payload) for args, kwargs in mock.call_args_list
     ]
 
-    assert [env.message for env in received_envelopes] == pinned
+    msgs = [env.message for env in received_envelopes]
+
+    # Workaround for https://github.com/freol35241/pytest-pinned/issues/10
+    msgs = json.loads(json.dumps(msgs, cls=BytesJSONEncoder))
+
+    assert msgs == pinned

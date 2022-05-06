@@ -9,3 +9,14 @@ services:
       - EMQX_ACL_FILE=etc/not-available.conf
     ports:
       - 1883:1883
+
+  crowsnest-processor-ais-decode:
+    build: ../.
+    environment:
+      - MQTT_BROKER_HOST=broker
+      - MQTT_INPUT_TOPIC=INPUT
+      - MQTT_OUTPUT_BASE_TOPIC=OUTPUT
+      - LOG_LEVEL=DEBUG
+    depends_on:
+      - broker
+    restart: unless-stopped
