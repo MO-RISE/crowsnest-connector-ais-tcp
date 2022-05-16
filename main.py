@@ -1,13 +1,14 @@
 """Main entrypoint for this application"""
 import logging
 import warnings
-from base64 import b64decode
+from base64 import b64decode, b64encode
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple, Optional
 
 from streamz import Stream
 
-from pyais.messages import ANY_MESSAGE, NMEAMessage, JSONEncoder as BytesJSONEncoder
+import pydantic.json
+from pyais.messages import ANY_MESSAGE, NMEAMessage
 from pyais.exceptions import InvalidNMEAMessageException
 from environs import Env
 
@@ -46,6 +47,10 @@ if MQTT_TLS:
     mq.tls_set()
 
 mq.enable_logger(LOGGER)
+
+# Monkey-patch pydantics json handling of bytes
+# pylint: disable=c-extension-no-member
+pydantic.json.ENCODERS_BY_TYPE[bytes] = lambda x: b64encode(x).decode()
 
 
 # Not empty filter
@@ -125,7 +130,7 @@ def to_mqtt(envelope: Envelope, mmsi: int, message_type: int):
     """Publish an envelope to a mqtt topic"""
 
     topic = f"{MQTT_OUTPUT_BASE_TOPIC}/{mmsi}/{message_type}"
-    payload = envelope.json(cls=BytesJSONEncoder)
+    payload = envelope.json()
 
     LOGGER.debug("Publishing on %s with payload: %s", topic, payload)
     try:
